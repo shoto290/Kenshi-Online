@@ -5,6 +5,7 @@
 #include "kmp/messages.h"
 #include "kmp/constants.h"
 #include "upnp.h"
+#include "master_http_client.h"
 #include <enet/enet.h>
 #include <unordered_map>
 #include <string>
@@ -141,19 +142,11 @@ private:
     float    m_timeSinceAutoSave = 0.f;
     float    m_autoSaveInterval = 60.f; // seconds
 
-    // Master server registration
-    ENetHost* m_masterHost = nullptr;  // Separate ENet host for master connection
-    ENetPeer* m_masterPeer = nullptr;
-    bool      m_masterConnected = false;
-    float     m_timeSinceMasterHeartbeat = 0.f;
-    float     m_masterHeartbeatInterval = 30.f; // seconds
-    float     m_masterReconnectTimer = 0.f;
-    float     m_masterReconnectDelay = 5.f;    // seconds, doubles on each failure (max 60s)
+    // Master server HTTP client
+    MasterHttpClient m_masterClient;
+    bool m_masterInitFailed = false;
 
     void ConnectToMaster();
-    void SendMasterRegister();
-    void SendMasterHeartbeat();
-    void SendMasterDeregister();
     void UpdateMasterConnection(float deltaTime);
 };
 

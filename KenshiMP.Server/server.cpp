@@ -80,17 +80,8 @@ bool GameServer::Start(const ServerConfig& config) {
 }
 
 void GameServer::Stop() {
-    // Deregister from master server
-    SendMasterDeregister();
-    if (m_masterPeer) {
-        enet_peer_disconnect_now(m_masterPeer, 0);
-        m_masterPeer = nullptr;
-    }
-    if (m_masterHost) {
-        enet_host_destroy(m_masterHost);
-        m_masterHost = nullptr;
-    }
-    m_masterConnected = false;
+    m_masterClient.Deregister();
+    m_masterClient.Shutdown();
 
     // Remove UPnP port mapping
     if (m_upnp.IsMapped()) {
@@ -1655,7 +1646,7 @@ void GameServer::HandleAdminCommand(ConnectedPlayer& player, PacketReader& reade
            KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
-// ── Master Server Registration ──
+// ── Master Server Registration (HTTP REST) ──
 
 void GameServer::ConnectToMaster() {
     if (m_config.masterServerUrl.empty()) {
@@ -1663,113 +1654,25 @@ void GameServer::ConnectToMaster() {
         return;
     }
 
-    // TODO(KEN-21): Replace UDP master server with HTTP REST client
-    spdlog::info("GameServer: Master server URL configured: {} (HTTP integration pending)",
-                 m_config.masterServerUrl);
-}
-
-void GameServer::SendMasterRegister() {
-    if (!m_masterPeer || !m_masterConnected) return;
-
-    PacketWriter writer;
-    writer.WriteHeader(MessageType::MS_Register);
-
-    MsgMasterRegister msg{};
-    msg.protocolVersion = KMP_PROTOCOL_VERSION;
-    msg.gamePort = m_config.port;
-    msg.currentPlayers = static_cast<uint8_t>(m_players.size());
-    msg.maxPlayers = static_cast<uint8_t>(m_config.maxPlayers);
-    msg.timeOfDay = m_timeOfDay;
-    msg.pvpEnabled = m_config.pvpEnabled ? 1 : 0;
-    strncpy(msg.serverName, m_config.serverName.c_str(), sizeof(msg.serverName) - 1);
-
-    // Try to fill external IP from UPnP discovery
-    std::string extIP = m_upnp.GetExternalIP();
-    if (!extIP.empty()) {
-        strncpy(msg.externalIP, extIP.c_str(), sizeof(msg.externalIP) - 1);
+    if (!m_masterClient.Init(m_config.masterServerUrl, m_config.masterServerApiKey)) {
+        spdlog::error("GameServer: Failed to initialize master server HTTP client");
+        m_masterInitFailed = true;
+        return;
     }
-    // If empty, master server will use the peer's IP
 
-    writer.WriteRaw(&msg, sizeof(msg));
+    std::string externalIp = m_upnp.GetExternalIP();
+    if (externalIp.empty()) {
+        externalIp = "0.0.0.0";
+    }
 
-    ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
-                                             ENET_PACKET_FLAG_RELIABLE);
-    enet_peer_send(m_masterPeer, 0, packet);
-    enet_host_flush(m_masterHost);
-
-    spdlog::info("GameServer: Registered with master server (name='{}', port={})",
-                 m_config.serverName, m_config.port);
-}
-
-void GameServer::SendMasterHeartbeat() {
-    if (!m_masterPeer || !m_masterConnected) return;
-
-    PacketWriter writer;
-    writer.WriteHeader(MessageType::MS_Heartbeat);
-
-    MsgMasterHeartbeat msg{};
-    msg.gamePort = m_config.port;
-    msg.currentPlayers = static_cast<uint8_t>(m_players.size());
-    msg.maxPlayers = static_cast<uint8_t>(m_config.maxPlayers);
-    msg.timeOfDay = m_timeOfDay;
-
-    writer.WriteRaw(&msg, sizeof(msg));
-
-    ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
-                                             ENET_PACKET_FLAG_RELIABLE);
-    enet_peer_send(m_masterPeer, 0, packet);
-}
-
-void GameServer::SendMasterDeregister() {
-    if (!m_masterPeer || !m_masterConnected) return;
-
-    PacketWriter writer;
-    writer.WriteHeader(MessageType::MS_Deregister);
-
-    ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
-                                             ENET_PACKET_FLAG_RELIABLE);
-    enet_peer_send(m_masterPeer, 0, packet);
-    enet_host_flush(m_masterHost);
+    m_masterClient.Register(m_config, externalIp);
 }
 
 void GameServer::UpdateMasterConnection(float deltaTime) {
-    if (!m_masterHost) return;
+    if (m_masterInitFailed) return;
 
-    // Poll master connection events
-    ENetEvent event;
-    while (enet_host_service(m_masterHost, &event, 0) > 0) {
-        switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT:
-                m_masterConnected = true;
-                m_masterReconnectDelay = 5.f; // Reset backoff on success
-                spdlog::info("GameServer: Connected to master server");
-                SendMasterRegister();
-                break;
-            case ENET_EVENT_TYPE_DISCONNECT:
-                m_masterConnected = false;
-                m_masterPeer = nullptr;
-                spdlog::warn("GameServer: Disconnected from master server — will retry in {:.0f}s",
-                             m_masterReconnectDelay);
-                break;
-            case ENET_EVENT_TYPE_RECEIVE:
-                enet_packet_destroy(event.packet);
-                break;
-            default:
-                break;
-        }
-    }
-
-    // Send heartbeat if connected
-    if (m_masterConnected) {
-        m_timeSinceMasterHeartbeat += deltaTime;
-        if (m_timeSinceMasterHeartbeat >= m_masterHeartbeatInterval) {
-            SendMasterHeartbeat();
-            m_timeSinceMasterHeartbeat = 0.f;
-        }
-    }
-    // TODO(KEN-21): HTTP master server reconnect with exponential backoff
-
-    enet_host_flush(m_masterHost);
+    int playerCount = static_cast<int>(m_players.size());
+    m_masterClient.Update(deltaTime, playerCount);
 }
 
 } // namespace kmp

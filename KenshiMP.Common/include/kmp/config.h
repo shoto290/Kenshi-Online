@@ -33,6 +33,8 @@ struct ServerConfig {
     float       gameSpeed    = 1.0f;
     std::string masterServerUrl = "http://localhost:3000";
     std::string masterServerApiKey;
+    std::string region = "us-east";
+    std::string gameVersion = "1.0.68";
 
     bool Load(const std::string& path);
     bool Save(const std::string& path) const;

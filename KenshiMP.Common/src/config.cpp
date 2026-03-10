@@ -78,6 +78,8 @@ bool ServerConfig::Load(const std::string& path) {
         if (j.contains("gameSpeed"))  gameSpeed  = j["gameSpeed"].get<float>();
         if (j.contains("masterServerUrl")) masterServerUrl = j["masterServerUrl"].get<std::string>();
         if (j.contains("masterServerApiKey")) masterServerApiKey = j["masterServerApiKey"].get<std::string>();
+        if (j.contains("region")) region = j["region"].get<std::string>();
+        if (j.contains("gameVersion")) gameVersion = j["gameVersion"].get<std::string>();
         return true;
     } catch (...) {
         return false;
@@ -96,6 +98,8 @@ bool ServerConfig::Save(const std::string& path) const {
     j["gameSpeed"]  = gameSpeed;
     j["masterServerUrl"] = masterServerUrl;
     j["masterServerApiKey"] = masterServerApiKey;
+    j["region"] = region;
+    j["gameVersion"] = gameVersion;
 
     std::ofstream file(path);
     if (!file.is_open()) return false;

@@ -1,6 +1,7 @@
 add_executable(KenshiMP.Server
     main.cpp
     server.cpp
+    master_http_client.cpp
     upnp.cpp
     game_state.cpp
     player_manager.cpp
@@ -17,6 +18,7 @@ target_link_libraries(KenshiMP.Server PRIVATE
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     ws2_32
+    winhttp
     winmm
     ole32
     oleaut32
