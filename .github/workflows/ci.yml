@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.config }} --parallel
+
+      - name: Run unit tests
+        run: |
+          $testExe = "build/bin/${{ matrix.config }}/KenshiMP.UnitTest.exe"
+          if (Test-Path $testExe) {
+            & $testExe
+          } else {
+            Write-Host "Unit test binary not found at $testExe, skipping"
+          }
+
+      - name: Package release artifacts
+        if: matrix.config == 'Release'
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact
+          $binDir = "build/bin/Release"
+          if (Test-Path $binDir) {
+            Copy-Item "$binDir/*.exe" artifact/ -ErrorAction SilentlyContinue
+            Copy-Item "$binDir/*.dll" artifact/ -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "dist") {
+            Copy-Item -Recurse "dist" artifact/dist
+          }
+
+      - name: Upload build artifacts
+        if: matrix.config == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KenshiMP-Release
+          path: artifact/
+          retention-days: 30
