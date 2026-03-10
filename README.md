@@ -1,16 +1,10 @@
-# Kenshi-Online
+# Kenshi-Online (Fork)
 
 **16-player co-op multiplayer mod for Kenshi**
 
-[![Latest Release](https://img.shields.io/github/v/release/The404Studios/Kenshi-Online?style=flat-square)](https://github.com/The404Studios/Kenshi-Online/releases/latest)
-[![License](https://img.shields.io/github/license/The404Studios/Kenshi-Online?style=flat-square)](LICENSE)
+Forked from [The404Studios/Kenshi-Online](https://github.com/The404Studios/Kenshi-Online) (v1.0.2).
 
-https://discord.gg/JJcJZxE4ma
-
-
-Kenshi-Online adds seamless multiplayer to Kenshi using native MyGUI integration, ENet networking, and Ogre plugin injection. Players can explore, fight, build, and trade together in the open world of Kenshi.
-
-> **v1.0.2 — Stability Update** (March 2026): Major crash fixes for zone loading, spawn pipeline, and disconnect handling. See [CHANGELOG.md](CHANGELOG.md) for details.
+This fork replaces the UDP-based master server with our HTTP REST API for server discovery, registration, and heartbeat. The ENet game networking remains unchanged.
 
 ---
 
@@ -32,7 +26,7 @@ See the full [Installation Guide (English)](docs/english.md) or [Installation Gu
 
 - **Up to 16 players** on a single server
 - **Dedicated server** with persistence and console commands
-- **Master server** with centralized server browser (auto-discovery)
+- **REST API master server** for server browser and discovery
 - **Full network replication** — characters, NPCs, combat, buildings, items
 - **Zone-based sync** — efficient bandwidth usage with interest management
 - **Server-authoritative** combat and world state
@@ -46,10 +40,11 @@ See the full [Installation Guide (English)](docs/english.md) or [Installation Gu
 KenshiMP.Injector.exe    -> Modifies Plugins_x64.cfg, launches Kenshi
 KenshiMP.Core.dll        -> Loaded by Ogre as a plugin, hooks game functions
 KenshiMP.Server.exe      -> Dedicated server (host on VPS or locally)
-KenshiMP.MasterServer.exe-> Centralized server browser registry (port 27801)
 KenshiMP.Common.lib      -> Shared types, protocol, serialization
 KenshiMP.Scanner.lib     -> Pattern scanning, MinHook wrapper
 ```
+
+> The original `KenshiMP.MasterServer` has been removed. Server discovery uses our HTTP REST API.
 
 ## What to Expect In-Game
 
@@ -86,7 +81,9 @@ You will see HUD messages guiding you:
   "port": 27800,
   "maxPlayers": 16,
   "pvpEnabled": true,
-  "gameSpeed": 1.0
+  "gameSpeed": 1.0,
+  "masterServerUrl": "https://your-master-server.example.com",
+  "masterServerApiKey": "your-api-key"
 }
 ```
 3. Run: `./KenshiMP.Server.exe`
@@ -135,7 +132,6 @@ cmake --build build --config Release
 # build/bin/Release/KenshiMP.Injector.exe
 # build/bin/Release/KenshiMP.Core.dll
 # build/bin/Release/KenshiMP.Server.exe
-# build/bin/Release/KenshiMP.MasterServer.exe
 ```
 
 ### Manual Library Setup (without vcpkg)
@@ -204,9 +200,6 @@ KenshiMP/
 +-- KenshiMP.Server/          # Dedicated server
 |   +-- main.cpp              # Console entry + commands
 |   +-- server.cpp            # Game state, networking
-|
-+-- KenshiMP.MasterServer/    # Server browser registry
-|   +-- main.cpp              # ENet master server (port 27801)
 |
 +-- KenshiMP.Injector/        # Launcher
     +-- main.cpp              # Win32 GUI

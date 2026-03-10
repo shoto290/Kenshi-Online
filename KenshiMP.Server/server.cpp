@@ -1658,33 +1658,14 @@ void GameServer::HandleAdminCommand(ConnectedPlayer& player, PacketReader& reade
 // ── Master Server Registration ──
 
 void GameServer::ConnectToMaster() {
-    if (m_config.masterServer.empty()) {
-        spdlog::info("GameServer: No master server configured, skipping registration");
+    if (m_config.masterServerUrl.empty()) {
+        spdlog::info("GameServer: No master server URL configured, skipping registration");
         return;
     }
 
-    // Create a separate ENet host for the master connection (1 peer, 1 channel)
-    m_masterHost = enet_host_create(nullptr, 1, 1, 0, 0);
-    if (!m_masterHost) {
-        spdlog::warn("GameServer: Failed to create master ENet host");
-        return;
-    }
-
-    ENetAddress masterAddr;
-    enet_address_set_host(&masterAddr, m_config.masterServer.c_str());
-    masterAddr.port = m_config.masterPort;
-
-    m_masterPeer = enet_host_connect(m_masterHost, &masterAddr, 1, 0);
-    if (!m_masterPeer) {
-        spdlog::warn("GameServer: Failed to connect to master server at {}:{}",
-                     m_config.masterServer, m_config.masterPort);
-        enet_host_destroy(m_masterHost);
-        m_masterHost = nullptr;
-        return;
-    }
-
-    spdlog::info("GameServer: Connecting to master server at {}:{}...",
-                 m_config.masterServer, m_config.masterPort);
+    // TODO(KEN-21): Replace UDP master server with HTTP REST client
+    spdlog::info("GameServer: Master server URL configured: {} (HTTP integration pending)",
+                 m_config.masterServerUrl);
 }
 
 void GameServer::SendMasterRegister() {
@@ -1785,26 +1766,8 @@ void GameServer::UpdateMasterConnection(float deltaTime) {
             SendMasterHeartbeat();
             m_timeSinceMasterHeartbeat = 0.f;
         }
-    } else if (m_masterPeer == nullptr && !m_config.masterServer.empty()) {
-        // Auto-reconnect with exponential backoff (5s → 10s → 20s → 40s → max 60s)
-        m_masterReconnectTimer += deltaTime;
-        if (m_masterReconnectTimer >= m_masterReconnectDelay) {
-            m_masterReconnectTimer = 0.f;
-            spdlog::info("GameServer: Reconnecting to master server at {}:{}...",
-                         m_config.masterServer, m_config.masterPort);
-
-            ENetAddress masterAddr;
-            enet_address_set_host(&masterAddr, m_config.masterServer.c_str());
-            masterAddr.port = m_config.masterPort;
-            m_masterPeer = enet_host_connect(m_masterHost, &masterAddr, 1, 0);
-            if (!m_masterPeer) {
-                spdlog::warn("GameServer: Master reconnect failed to start");
-            }
-
-            // Exponential backoff (cap at 60s)
-            m_masterReconnectDelay = std::min(m_masterReconnectDelay * 2.f, 60.f);
-        }
     }
+    // TODO(KEN-21): HTTP master server reconnect with exponential backoff
 
     enet_host_flush(m_masterHost);
 }

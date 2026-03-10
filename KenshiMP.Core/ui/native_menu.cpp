@@ -588,11 +588,10 @@ void NativeMenu::OnRefreshServersClicked() {
         queryClient.Clear();
     }
 
-    // Query the master server for the global server list
-    if (!config.masterServer.empty()) {
-        queryClient.QueryMasterServer(config.masterServer, config.masterPort);
-        spdlog::info("NativeMenu: Querying master server at {}:{}",
-                     config.masterServer, config.masterPort);
+    // TODO(KEN-22): Query our REST API at config.masterServerUrl for server list
+    if (!config.masterServerUrl.empty()) {
+        spdlog::info("NativeMenu: Master server URL configured: {} (HTTP query pending)",
+                     config.masterServerUrl);
     }
 
     // Also query all favorites directly (for servers not on master)
@@ -608,7 +607,7 @@ void NativeMenu::OnRefreshServersClicked() {
     }
 
     int totalQueries = static_cast<int>(config.favoriteServers.size()) +
-                       (config.masterServer.empty() ? 0 : 1);
+                       (config.masterServerUrl.empty() ? 0 : 1);
     if (m_browserStatusText) {
         MyGuiBridge::Get().SetCaption(m_browserStatusText,
             "Querying " + std::to_string(totalQueries) + " sources...");

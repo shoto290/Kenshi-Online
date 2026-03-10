@@ -34,8 +34,7 @@ bool ClientConfig::Load(const std::string& path) {
         if (j.contains("favoriteServers")) {
             favoriteServers = j["favoriteServers"].get<std::vector<std::string>>();
         }
-        if (j.contains("masterServer")) masterServer = j["masterServer"].get<std::string>();
-        if (j.contains("masterPort"))   masterPort   = j["masterPort"].get<uint16_t>();
+        if (j.contains("masterServerUrl")) masterServerUrl = j["masterServerUrl"].get<std::string>();
         if (j.contains("useSyncOrchestrator")) useSyncOrchestrator = j["useSyncOrchestrator"].get<bool>();
         return true;
     } catch (...) {
@@ -51,8 +50,7 @@ bool ClientConfig::Save(const std::string& path) const {
     j["autoConnect"] = autoConnect;
     j["overlayScale"] = overlayScale;
     j["favoriteServers"] = favoriteServers;
-    j["masterServer"] = masterServer;
-    j["masterPort"]   = masterPort;
+    j["masterServerUrl"] = masterServerUrl;
     j["useSyncOrchestrator"] = useSyncOrchestrator;
 
     std::ofstream file(path);
@@ -78,8 +76,8 @@ bool ServerConfig::Load(const std::string& path) {
         if (j.contains("tickRate"))   tickRate   = j["tickRate"].get<int>();
         if (j.contains("pvpEnabled")) pvpEnabled = j["pvpEnabled"].get<bool>();
         if (j.contains("gameSpeed"))  gameSpeed  = j["gameSpeed"].get<float>();
-        if (j.contains("masterServer")) masterServer = j["masterServer"].get<std::string>();
-        if (j.contains("masterPort"))   masterPort   = j["masterPort"].get<uint16_t>();
+        if (j.contains("masterServerUrl")) masterServerUrl = j["masterServerUrl"].get<std::string>();
+        if (j.contains("masterServerApiKey")) masterServerApiKey = j["masterServerApiKey"].get<std::string>();
         return true;
     } catch (...) {
         return false;
@@ -96,8 +94,8 @@ bool ServerConfig::Save(const std::string& path) const {
     j["tickRate"]   = tickRate;
     j["pvpEnabled"] = pvpEnabled;
     j["gameSpeed"]  = gameSpeed;
-    j["masterServer"] = masterServer;
-    j["masterPort"]   = masterPort;
+    j["masterServerUrl"] = masterServerUrl;
+    j["masterServerApiKey"] = masterServerApiKey;
 
     std::ofstream file(path);
     if (!file.is_open()) return false;
